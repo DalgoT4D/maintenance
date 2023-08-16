@@ -18,3 +18,7 @@ if args.block_name:
     print(block.project_dir)
     print(block.working_dir)
     print(block.profiles_dir)
+
+    if args.command:
+        block.commands = [args.command]
+        block.save(overwrite=True)
