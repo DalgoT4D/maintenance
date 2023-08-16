@@ -13,7 +13,7 @@ args = parser.parse_args()
 from prefect_dbt.cli.commands import DbtCoreOperation
 
 if args.block_name:
-    block: DbtCoreOperation = DbtCoreOperation.load(args.block_name, validate=False)
+    block: DbtCoreOperation = DbtCoreOperation.load(args.block_name)
     print(block.commands[0])
     print(block.project_dir)
     print(block.working_dir)
@@ -21,4 +21,4 @@ if args.block_name:
 
     if args.command:
         block.commands = [args.command]
-        block.save(overwrite=True)
+        block.save(args.block_name, overwrite=True)
