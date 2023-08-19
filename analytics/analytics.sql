@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS public.syncstats
     "org" character varying(20) COLLATE pg_catalog."default" NOT NULL,
     "date" date NOT NULL,
     "table" character varying(100) COLLATE pg_catalog."default" NOT NULL,
-    "nsynced" smallint NOT NULL,
+    "nsynced" bigint NOT NULL,
     CONSTRAINT one_stat_per_day EXCLUDE USING gist (
         "org" WITH =,
         "date" WITH =,
