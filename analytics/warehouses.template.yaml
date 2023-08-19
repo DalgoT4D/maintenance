@@ -1,0 +1,7 @@
+---
+orgname:
+  HOST: Database host
+  NAME: Database name
+  USER: Database user
+  PASS: Password
+  SCHEMA: Database schema
