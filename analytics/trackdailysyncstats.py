@@ -4,7 +4,7 @@ import os
 import argparse
 import psycopg2
 from yaml import safe_load
-from datetime import datetime
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,7 +14,9 @@ parser.add_argument("-d", "--date")
 args = parser.parse_args()
 
 report_date = (
-    datetime.strptime(args.date, "%Y-%m-%d") if args.date else datetime.today()
+    datetime.strptime(args.date, "%Y-%m-%d")
+    if args.date
+    else datetime.today() - timedelta(days=1)
 )
 
 
