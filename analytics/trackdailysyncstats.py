@@ -93,7 +93,7 @@ def main():
     ) as analytics_conn:
         cursor = analytics_conn.cursor()
         for reportline in report:
-            execute = f"""INSERT INTO syncstats (org, date, table, nsynced)
+            execute = f"""INSERT INTO syncstats ("org", "date", "table", "nsynced")
                 VALUES (
                     '{reportline['org']}',
                     '{reportline['date']}',
@@ -101,7 +101,15 @@ def main():
                     '{reportline['nsynced']}'
                 )"""
             print(execute)
-            cursor.execute(execute)
+            try:
+                cursor.execute(execute)
+            except psycopg2.errors.ExclusionViolation:
+                execute = f"""UPDATE syncstats
+                SET "nsynced" = '{reportline['nsynced']}'
+                WHERE "org" = '{reportline['org']}'
+                    AND "date" = '{reportline['date']}'
+                    AND "table" = '{reportline['table']}'
+                """
 
 
 main()
