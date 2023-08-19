@@ -104,12 +104,14 @@ def main():
             try:
                 cursor.execute(execute)
             except psycopg2.errors.ExclusionViolation:
+                analytics_conn.rollback()
                 execute = f"""UPDATE syncstats
                 SET "nsynced" = '{reportline['nsynced']}'
                 WHERE "org" = '{reportline['org']}'
                     AND "date" = '{reportline['date']}'
                     AND "table" = '{reportline['table']}'
                 """
+                cursor.execute(execute)
 
 
 main()
