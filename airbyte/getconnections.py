@@ -1,5 +1,7 @@
 """downloads workspace information from the airbyte database"""
 import os
+import sys
+import logging
 import argparse
 import json
 import psycopg2
@@ -10,8 +12,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+logging.basicConfig(level=logging.INFO)
+
 parser = argparse.ArgumentParser()
-parser.add_argument("--for-migration", action="store_true")
+parser.add_argument("--workspace-id", required=True)
+parser.add_argument("--outfile")
 args = parser.parse_args()
 
 
@@ -46,8 +51,8 @@ def get_actor_docker_image_tag(cursor, actor_definition_id: str):
     return f"{docker_image['docker_repository']}:{docker_image['docker_image_tag']}"
 
 
-def get_sources(cursor):
-    """fetch all sources from the airbyte actor table"""
+def get_actor(cursor, actor_type: str, actor_id: str):
+    """get a single source or definition"""
     columns = (
         "id",
         "workspace_id",
@@ -58,68 +63,95 @@ def get_sources(cursor):
     )
     cursor.execute(
         f"""
-      SELECT {",".join(columns)} FROM actor WHERE actor_type = 'source'
-    """
+          SELECT {",".join(columns)} FROM actor
+          WHERE actor_type = '{actor_type}'
+          AND id = '{actor_id}'
+        """
     )
     results = cursor.fetchall()
 
-    for result in results:
-        source = dict(zip(columns, result))
-        source["source_definition_id"] = source["actor_definition_id"]
-        del source["actor_definition_id"]
-        del source["actor_type"]
-        if "password" in source["configuration"] and isinstance(
-            source["configuration"]["password"], dict
-        ):
-            source["configuration"]["password"] = get_secret(
-                source["configuration"]["password"]["_secret"]
-            )
-        print(json.dumps(source, indent=2))
+    result = results[0]
+    actor = dict(zip(columns, result))
 
-
-def get_destinations(cursor):
-    """fetch all destinations from the airbyte actor table"""
-    columns = (
-        "id",
-        "workspace_id",
-        "actor_definition_id",
-        "name",
-        "configuration",
-        "actor_type",
+    actor["docker_image_tag"] = get_actor_docker_image_tag(
+        cursor, actor["actor_definition_id"]
     )
-    cursor.execute(
-        f"""
-      SELECT {",".join(columns)} FROM actor WHERE actor_type = 'destination'
-    """
-    )
-    results = cursor.fetchall()
 
-    for result in results:
-        destination = dict(zip(columns, result))
+    # actor[f"{actor_type}_definition_id"] = actor["actor_definition_id"]
+    del actor["actor_definition_id"]
+    del actor["actor_type"]
 
-        destination["docker_image_tag"] = get_actor_docker_image_tag(
-            cursor, destination["actor_definition_id"]
+    if "password" in actor["configuration"] and isinstance(
+        actor["configuration"]["password"], dict
+    ):
+        actor["configuration"]["password"] = get_secret(
+            actor["configuration"]["password"]["_secret"]
         )
 
-        if args.for_migration:
-            del destination["actor_definition_id"]
-            del destination["actor_type"]
-            del destination["id"]
-            del destination["workspace_id"]
-        else:
-            destination["destination_definition_id"] = destination[
-                "actor_definition_id"
-            ]
-            del destination["actor_definition_id"]
-            del destination["actor_type"]
+    return actor
 
-        if "password" in destination["configuration"] and isinstance(
-            destination["configuration"]["password"], dict
-        ):
-            destination["configuration"]["password"] = get_secret(
-                destination["configuration"]["password"]["_secret"]
-            )
-        print(json.dumps(destination, indent=2))
+
+def get_source(cursor, source_id: str):
+    """fetch a single source from the airbyte actor table"""
+    source = get_actor(cursor, "source", source_id)
+    return source
+
+
+def get_destination(cursor, destination_id: str):
+    """fetch a single destination from the airbyte actor table"""
+    destination = get_actor(cursor, "destination", destination_id)
+    return destination
+
+
+def get_connections(cursor, workspace_id: str):
+    """
+    read the airbyte connections table
+    """
+    columns = (
+        "connection.id AS id",
+        "source_id",
+        "destination_id",
+        "namespace_definition",
+        "namespace_format",
+        "prefix",
+        "connection.name AS name",
+        "catalog",
+        # "field_selection_data",
+    )
+    query = f"""
+      SELECT {",".join(columns)} FROM connection
+      JOIN actor ON connection.source_id = actor.id
+      WHERE status = 'active'
+      AND actor.workspace_id = '{workspace_id}'
+    """
+    cursor.execute(query)
+    results = cursor.fetchall()
+
+    return_value = {
+        "sources": [],
+        "destinations": [],
+        "connections": [],
+    }
+
+    for result in results:
+        connection = dict(zip(columns, result))
+
+        source = get_source(cursor, connection["source_id"])
+        destination = get_destination(cursor, connection["destination_id"])
+
+        if source["id"] not in [x["id"] for x in return_value["sources"]]:
+            return_value["sources"].append(source)
+        if destination["id"] not in [x["id"] for x in return_value["destinations"]]:
+            return_value["destinations"].append(destination)
+
+        connection["id"] = connection["connection.id AS id"]
+        del connection["connection.id AS id"]
+        connection["name"] = connection["connection.name AS name"]
+        del connection["connection.name AS name"]
+
+        return_value["connections"].append(connection)
+
+    return return_value
 
 
 # -- start
@@ -131,5 +163,12 @@ conn = psycopg2.connect(
     database=os.getenv("DBNAME"),
 )
 thecursor = conn.cursor()
-get_sources(thecursor)
-get_destinations(thecursor)
+data = get_connections(thecursor, args.workspace_id)
+
+if args.outfile:
+    with open(args.outfile, "w", encoding="utf-8") as outfile:
+        json.dump(data, outfile, indent=2)
+else:
+    json.dump(data, sys.stdout, indent=2)
+
+conn.close()
