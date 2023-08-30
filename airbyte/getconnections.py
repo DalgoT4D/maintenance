@@ -29,6 +29,23 @@ def get_secret(secret_id: str):
         return None
 
 
+def get_actor_docker_image_tag(cursor, actor_definition_id: str):
+    """
+    returns the docker image tag for the actor definition
+    the actor definition id will differ across airbyte installations
+    for a custom connector
+    """
+    columns = ("docker_repository", "docker_image_tag")
+    cursor.execute(
+        f"""SELECT {",".join(columns)} FROM actor_definition_version
+        WHERE actor_definition_id = '{actor_definition_id}'
+        """
+    )
+    results = cursor.fetchall()
+    docker_image = dict(zip(columns, results[0]))
+    return f"{docker_image['docker_repository']}:{docker_image['docker_image_tag']}"
+
+
 def get_sources(cursor):
     """fetch all sources from the airbyte actor table"""
     columns = (
@@ -103,23 +120,6 @@ def get_destinations(cursor):
                 destination["configuration"]["password"]["_secret"]
             )
         print(json.dumps(destination, indent=2))
-
-
-def get_actor_docker_image_tag(cursor, actor_definition_id: str):
-    """
-    returns the docker image tag for the actor definition
-    the actor definition id will differ across airbyte installations
-    for a custom connector
-    """
-    columns = ("docker_repository", "docker_image_tag")
-    cursor.execute(
-        f"""SELECT {",".join(columns)} FROM actor_definition_version
-        WHERE actor_definition_id = '{actor_definition_id}'
-        """
-    )
-    results = cursor.fetchall()
-    docker_image = dict(zip(columns, results[0]))
-    return f"{docker_image['docker_repository']}:{docker_image['docker_image_tag']}"
 
 
 # -- start
