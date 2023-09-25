@@ -1,4 +1,5 @@
 analytics/warehouses.yaml
 venv/
 .env
+pgmonitor/pgmonitor.env
 gcp.json
