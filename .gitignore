@@ -1,1 +1,4 @@
 analytics/warehouses.yaml
+venv/
+.env
+gcp.json
