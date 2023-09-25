@@ -88,6 +88,13 @@ def get_actor(cursor, actor_type: str, actor_id: str):
             actor["configuration"]["password"]["_secret"]
         )
 
+    elif "credentials" in actor["configuration"] and isinstance(
+        actor["configuration"]["credentials"], dict
+    ):
+        actor["configuration"]["credentials"]["service_account_info"] = get_secret(
+            actor["configuration"]["credentials"]["service_account_info"]["_secret"]
+        )
+
     return actor
 
 
