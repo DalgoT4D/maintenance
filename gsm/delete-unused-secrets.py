@@ -2,6 +2,7 @@
 # pylint:disable=invalid-name
 import os
 
+import json
 import argparse
 import logging
 from google.oauth2 import service_account
@@ -13,9 +14,16 @@ logging.basicConfig(level=logging.INFO, filename=os.getenv("LOGFILENAME"))
 logger = logging.getLogger()
 
 parser = argparse.ArgumentParser()
+parser.add_argument("--keep")
 args = parser.parse_args()
 
 parent = f"projects/{os.getenv('PROJECT_ID')}"
+
+workspaces_to_keep = []
+if args.keep:
+    with open(args.keep, "r", encoding="utf8") as keepfile:
+        keep = json.load(keepfile)
+        workspaces_to_keep = keep["workspaces"]
 
 credentials = service_account.Credentials.from_service_account_file(
     os.getenv("SERVICE_ACCOUNT_KEY_FILE")
@@ -50,3 +58,5 @@ for secretholder in response:
         "workspace_id=%s workspace_secret_id=%s", workspace_id, workspace_secret_id
     )
     logger.info(secret.payload.data)
+    if workspace_id not in workspaces_to_keep:
+        logger.info("DELETE %s", workspace_id)
