@@ -2,12 +2,15 @@
 
 import os
 import argparse
+import logging
+from datetime import datetime, timedelta
 import psycopg2
 from yaml import safe_load
-from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
+logging.basicConfig(filename=os.getenv("LOGFILE"), level=logging.INFO)
+logger = logging.getLogger()
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-d", "--date")
@@ -34,16 +37,18 @@ def get_tables_in_schema(conn, warehouse: dict) -> list:
     """returns list of table names in the given schema"""
 
     cursor = conn.cursor()
-
-    cursor.execute(
-        f"""SELECT table_name FROM information_schema.tables
-        WHERE table_schema = '{warehouse['SCHEMA']}'
-            AND table_catalog = '{warehouse["NAME"]}'
-        """
-    )
+    query = f"""SELECT table_name 
+                FROM information_schema.tables
+                WHERE table_schema = '{warehouse['SCHEMA']}'
+                    AND table_catalog = '{warehouse["NAME"]}'
+                """
+    logger.info(query)
+    cursor.execute(query)
 
     results = cursor.fetchall()
-    return [x[0] for x in results]
+    tables = [x[0] for x in results]
+    logger.info(tables)
+    return tables
 
 
 def get_sync_counts_from_table(
@@ -53,13 +58,12 @@ def get_sync_counts_from_table(
 
     cursor = conn.cursor()
     datestr = date.strftime("%Y-%m-%d")
-
-    cursor.execute(
-        f"""SELECT count(1) 
-        FROM {warehouse['SCHEMA']}.{tblname} 
-        WHERE DATE(_airbyte_emitted_at) = '{datestr}'
-        """
-    )
+    query = f"""SELECT count(1)
+                FROM {warehouse['SCHEMA']}.{tblname} 
+                WHERE DATE(_airbyte_emitted_at) = '{datestr}'
+                """
+    logger.info(query)
+    cursor.execute(query)
 
     agg_res = cursor.fetchall()
     return {
@@ -73,17 +77,19 @@ def get_sync_counts_from_table(
 def main():
     """main"""
     report = []
-    with open("warehouses.yaml", "r", encoding="utf-8") as warehouses_file:
+    with open(os.getenv("WAREHOUSESFILE"), "r", encoding="utf-8") as warehouses_file:
         warehouses = safe_load(warehouses_file)
         for orgname, warehouse in warehouses.items():
             with get_conn(warehouse) as conn:
+                logger.info("fetching tables for %s", orgname)
                 tablenames = get_tables_in_schema(conn, warehouse)
                 for tablename in tablenames:
-                    stat = get_sync_counts_from_table(
-                        conn, warehouse, tablename, report_date
-                    )
-                    stat["org"] = orgname
-                    report.append(stat)
+                    if tablename.find("_airbyte_raw_") == 0:
+                        stat = get_sync_counts_from_table(
+                            conn, warehouse, tablename, report_date
+                        )
+                        stat["org"] = orgname
+                        report.append(stat)
 
     with get_conn(
         {
