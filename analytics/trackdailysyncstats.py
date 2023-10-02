@@ -9,7 +9,7 @@ from yaml import safe_load
 from dotenv import load_dotenv
 
 load_dotenv()
-logging.basicConfig(file=os.getenv("LOGFILE"), level=logging.INFO)
+logging.basicConfig(filename=os.getenv("LOGFILE"), level=logging.INFO)
 logger = logging.getLogger()
 
 parser = argparse.ArgumentParser()
