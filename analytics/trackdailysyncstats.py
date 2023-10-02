@@ -81,14 +81,15 @@ def main():
         warehouses = safe_load(warehouses_file)
         for orgname, warehouse in warehouses.items():
             with get_conn(warehouse) as conn:
-                logger.info("fetching tables for %s", warehouse)
+                logger.info("fetching tables for %s", orgname)
                 tablenames = get_tables_in_schema(conn, warehouse)
                 for tablename in tablenames:
-                    stat = get_sync_counts_from_table(
-                        conn, warehouse, tablename, report_date
-                    )
-                    stat["org"] = orgname
-                    report.append(stat)
+                    if tablename.find("_airbyte_raw_") == 0:
+                        stat = get_sync_counts_from_table(
+                            conn, warehouse, tablename, report_date
+                        )
+                        stat["org"] = orgname
+                        report.append(stat)
 
     with get_conn(
         {
