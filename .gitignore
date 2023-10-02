@@ -3,3 +3,4 @@ venv/
 .env
 pgmonitor/pgmonitor.env
 gcp.json
+*.log
