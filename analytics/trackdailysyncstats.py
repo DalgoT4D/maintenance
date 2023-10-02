@@ -77,7 +77,7 @@ def get_sync_counts_from_table(
 def main():
     """main"""
     report = []
-    with open("warehouses.yaml", "r", encoding="utf-8") as warehouses_file:
+    with open(os.getenv("WAREHOUSESFILE"), "r", encoding="utf-8") as warehouses_file:
         warehouses = safe_load(warehouses_file)
         for orgname, warehouse in warehouses.items():
             with get_conn(warehouse) as conn:
