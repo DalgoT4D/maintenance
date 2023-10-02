@@ -15,15 +15,20 @@ logger = logging.getLogger()
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--keep")
+parser.add_argument("--delete", action="store_true")
 args = parser.parse_args()
 
 parent = f"projects/{os.getenv('PROJECT_ID')}"
 
 workspaces_to_keep = []
+# client workspaces
+workspaces_to_keep += os.getenv("CLIENT_WORKSPACES").split(",")
+
+# any others to keep
 if args.keep:
     with open(args.keep, "r", encoding="utf8") as keepfile:
         keep = json.load(keepfile)
-        workspaces_to_keep = keep["workspaces"]
+        workspaces_to_keep += keep["workspaces"]
 
 credentials = service_account.Credentials.from_service_account_file(
     os.getenv("SERVICE_ACCOUNT_KEY_FILE")
@@ -52,11 +57,17 @@ for secretholder in response:
         workspace_id = "<unknown>"
         workspace_secret_id = "<unknown>"
 
+    if workspace_id == "00000000-0000-0000-0000-000000000000":
+        # these are secrets airbyte maintains outside the context of a workspace
+        continue
+
     secret = client.access_secret_version(name=f"{secretholder.name}/versions/latest")
     logger.info("==")
     logger.info(
         "workspace_id=%s workspace_secret_id=%s", workspace_id, workspace_secret_id
     )
-    logger.info(secret.payload.data)
     if workspace_id not in workspaces_to_keep:
-        logger.info("DELETE %s", workspace_id)
+        logger.info("DELETE %s %s", workspace_id, secret.payload)
+        if args.delete:
+            logger.info("deleting %s", secretholder.name)
+            client.delete_secret(name=secretholder.name)
