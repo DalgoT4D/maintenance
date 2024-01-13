@@ -2,3 +2,8 @@ analytics/warehouses.yaml
 airbyte/venv
 airbyte/.env
 airbyte/gcp.json
+venv/
+.env
+pgmonitor/pgmonitor.env
+gcp.json
+*.log
