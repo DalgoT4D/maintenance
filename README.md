@@ -15,3 +15,6 @@ sudo journalctl --vacuum-time=10d
 
 ## unused docker images
 docker system prune -a
+
+## yarn cache
+yarn cache clean
