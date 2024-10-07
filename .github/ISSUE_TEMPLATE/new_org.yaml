@@ -1,5 +1,5 @@
 name: New Dalgo Org
-about: "Fill out this form to request the setup of a new Dalgo org"
+description: "Fill out this form to request the setup of a new Dalgo org"
 title: "New Dalgo Org"
 body:
   - type: input
