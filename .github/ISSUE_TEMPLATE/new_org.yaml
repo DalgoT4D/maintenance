@@ -1,0 +1,36 @@
+name: New Dalgo Org
+about: "Fill out this form to request the setup of a new Dalgo org"
+title: "New Dalgo Org"
+body:
+  - type: input
+    id: org-name
+    attributes:
+      label: Org Name
+      description: Name of Org
+    validations:
+      required: true
+  - type: dropdown
+    id: warehouse-type
+    attributes:
+      label: Warehouse Type
+      multiple: false
+      options:
+        - Postgres
+        - BigQuery
+    validations:
+      required: true
+  - type: input
+    id: dbt-repo
+    attributes:
+      label: dbt GitHub repo URL
+      description: The full URL to their dbt project's GitHub repo
+    validations:
+      required: false
+  - type: checkboxes
+    id: require-superset
+    attributes:
+      label: Set up Superset?
+      options:
+        - label: Yes
+          required: true
+
