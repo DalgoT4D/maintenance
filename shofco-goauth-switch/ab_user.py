@@ -9,7 +9,7 @@ def main(connection, email):
     prefix = "t4dbasic_"  # all old emails are prefixed with this
 
     cursor = connection.cursor()
-    cursor.execute(f"SELECT * FROM ab_user where email like '%{email}%';")
+    cursor.execute("SELECT * FROM ab_user WHERE email LIKE %s;", (f"%{email}%",))
     rows = cursor.fetchall()
 
     column_names = [desc[0] for desc in cursor.description]
@@ -17,8 +17,6 @@ def main(connection, email):
     rows_dict = [dict(zip(column_names, row)) for row in rows]
     # sort by created_on
     rows_dict = sorted(rows_dict, key=lambda x: x["created_on"])
-
-    print(rows_dict)
 
     if len(rows_dict) == 0:
         print("No record found for email - ", email, "\n")
@@ -35,14 +33,16 @@ def main(connection, email):
             print("New record found - ", new_one["username"], "\n")
 
             if not old_one["email"].startswith(prefix):
-                sys.exit(
+                print(
                     f"Exiting: The email does not have prefix {prefix}. Please check again. Looks like the script has already ran"
                 )
+                return True
 
             if old_one["username"].startswith("google"):
-                sys.exit(
+                print(
                     "Exiting: The record is already a Google OAuth record. Please check again"
                 )
+                return True
 
             cols_to_copy = [
                 # "first_name",
@@ -122,6 +122,11 @@ def main(connection, email):
             except (Exception, psycopg2.Error) as error:
                 print("Error while updating records", error)
                 connection.rollback()
+                return False
+
+        return True
+
+    return False
 
 
 if __name__ == "__main__":
@@ -135,6 +140,20 @@ if __name__ == "__main__":
         database=os.getenv("database"),
     )
 
-    email = sys.argv[1]
-    main(connection, email)
+    # fetch all old users that start with "t4basic_"
+    cursor = connection.cursor()
+    cursor.execute("SELECT email FROM ab_user where email like 't4dbasic_%';")
+    rows = [row[0] for row in cursor.fetchall()]
+    count_old = len(rows)
+    print("Total old users found - ", count_old)
+
+    # migrate to oauth if they have signed up with google
+    users_migrate_to_oauth = 0
+    for old_email in rows:
+        new_email = old_email.replace("t4dbasic_", "")
+        print("Old email - ", old_email, "New email - ", new_email)
+        if main(connection, new_email):
+            users_migrate_to_oauth += 1
+
+    print("Total users migrated to OAuth - %d", users_migrate_to_oauth)
     connection.close()
