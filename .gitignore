@@ -7,3 +7,4 @@ venv/
 pgmonitor/pgmonitor.env
 gcp.json
 *.log
+.env.grantselectfornoorausage
