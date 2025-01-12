@@ -4,6 +4,7 @@ airbyte/.env
 airbyte/gcp.json
 venv/
 .env
+.env.grantselectfornoorausage
 pgmonitor/pgmonitor.env
 gcp.json
 *.log
