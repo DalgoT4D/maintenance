@@ -11,7 +11,5 @@ abdesc() {
 }
 
 pf() {
-	podname=`kubectl get pods -n airbyte | grep airbyte-webapp- | awk '{print $1}'`
-	echo "port forwarding $podname"
-	kubectl port-forward $podname -n airbyte 8080:8080 -n airbyte
+	kubectl port-forward svc/airbyte-airbyte-webapp-svc 8080:80 --namespace airbyte
 }
