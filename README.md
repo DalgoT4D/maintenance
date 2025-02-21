@@ -18,3 +18,9 @@ docker system prune -a
 
 ## yarn cache
 yarn cache clean
+
+## find out why ec2 instance rebooted
+journalctl --since "1 hour ago" --no-pager | grep -i "reboot\|shutdown\|panic\|oom"
+journalctl -b -1 -n 50 --no-pager
+last -x reboot shutdown
+cat /var/log/unattended-upgrades/unattended-upgrades.log
