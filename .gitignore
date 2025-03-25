@@ -3,9 +3,11 @@ airbyte/venv
 airbyte/.env
 airbyte/gcp.json
 venv/
+.venv/
 .env
 .env.grantselectfornoorausage
 pgmonitor/pgmonitor.env
 gcp.json
 *.log
 .env.grantselectfornoorausage
+.env.dailybackup
