@@ -8,6 +8,7 @@ import pytz
 import boto3
 import psycopg2
 from dotenv import load_dotenv
+import tempfile
 
 parser = argparse.ArgumentParser(description="Backup all PostgreSQL databases")
 parser.add_argument(
@@ -60,25 +61,27 @@ s3_client = boto3.client(
 # Get today's date
 timestamp = datetime.datetime.now(IST).strftime("%Y-%m-%d")
 
-# Backup each database
-for db in databases:
-    backup_file = f"{db}_{timestamp}.sql.gz"
+# Create a temporary directory
+with tempfile.TemporaryDirectory() as tmpdirname:
+    print(f"Created temporary directory: {tmpdirname}")
 
-    dump_cmd = f"PGPASSWORD={PG_PASSWORD} pg_dump -h {PG_HOST} -U {PG_USER} -d {db} | gzip > {backup_file}"
-    s3_key = f"{S3_BACKUP_PATH}/{backup_file}"
-    print(f"{logprefix} CMD: {dump_cmd}")
-    print(f"{logprefix} KEY: {s3_key}")
+    # Backup each database
+    for db in databases:
+        backup_file = f"{db}_{timestamp}.sql.gz"
+        backup_file_dir = os.path.join(tmpdirname, backup_file)
 
-    if args.dry_run:
-        continue
+        dump_cmd = f"PGPASSWORD={PG_PASSWORD} pg_dump -h {PG_HOST} -U {PG_USER} -d {db} | gzip > {backup_file_dir}"
+        s3_key = f"{S3_BACKUP_PATH}/{backup_file}"
+        print(f"{logprefix} CMD: {dump_cmd}")
+        print(f"{logprefix} KEY: {s3_key}")
 
-    # Run pg_dump
-    subprocess.run(dump_cmd, shell=True, check=True)
-    # Upload to S3
-    s3_client.upload_file(backup_file, S3_BUCKET, s3_key)
+        if args.dry_run:
+            continue
 
-    # Remove local backup file
-    os.remove(backup_file)
+        # Run pg_dump
+        subprocess.run(dump_cmd, shell=True, check=True)
+        # Upload to S3
+        s3_client.upload_file(backup_file_dir, S3_BUCKET, s3_key)
 
 print(f"{logprefix} Backups completed. Now cleaning up old backups...")
 
