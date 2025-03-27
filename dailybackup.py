@@ -3,12 +3,12 @@
 import os
 import datetime
 import subprocess
+import tempfile
 import argparse
 import pytz
 import boto3
 import psycopg2
 from dotenv import load_dotenv
-import tempfile
 
 parser = argparse.ArgumentParser(description="Backup all PostgreSQL databases")
 parser.add_argument(
@@ -17,6 +17,7 @@ parser.add_argument(
 args = parser.parse_args()
 logprefix = "[DRY RUN] " if args.dry_run else ""
 
+# continue if .env file is not found, e.g. when we run from prefect
 load_dotenv(".env.dailybackup")
 
 # Configuration
@@ -28,14 +29,22 @@ S3_BACKUP_PATH = os.getenv("S3_BACKUP_PATH")
 RETENTION_DAYS = os.getenv("RETENTION_DAYS")
 AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")
 AWS_SECRET_KEY = os.getenv("AWS_SECRET_KEY")
+PGDUMP_BINARY = os.getenv("PGDUMP_BINARY", "/usr/lib/postgresql/15/bin/pg_dump")
+ROOT_CERT_LOCATION = os.getenv(
+    "ROOT_CERT_LOCATION", "/home/ddp/rds-combined-ca-bundle.pem"
+)
 
 IST = pytz.timezone("Asia/Kolkata")
 
 # Establish a connection to PostgreSQL
 conn = psycopg2.connect(
-    dbname="postgres", user=PG_USER, password=PG_PASSWORD, host=PG_HOST
+    dbname="postgres",
+    user=PG_USER,
+    password=PG_PASSWORD,
+    host=PG_HOST,
+    sslmode="allow",
+    sslrootcert=ROOT_CERT_LOCATION,
 )
-conn.autocommit = True
 cursor = conn.cursor()
 
 # Fetch all databases except template and system databases
@@ -70,9 +79,10 @@ with tempfile.TemporaryDirectory() as tmpdirname:
         backup_file = f"{db}_{timestamp}.sql.gz"
         backup_file_dir = os.path.join(tmpdirname, backup_file)
 
-        dump_cmd = f"PGPASSWORD={PG_PASSWORD} pg_dump -h {PG_HOST} -U {PG_USER} -d {db} | gzip > {backup_file_dir}"
+        dump_cmd = f'{PGDUMP_BINARY} "host={PG_HOST} user={PG_USER} dbname={db} sslrootcert={ROOT_CERT_LOCATION} sslmode=allow" | gzip > {backup_file_dir}'
         s3_key = f"{S3_BACKUP_PATH}/{backup_file}"
-        print(f"{logprefix} CMD: {dump_cmd}")
+        print(f"{logprefix} CMD: PGPASSWORD=<*********> {dump_cmd}")
+        dump_cmd = f"PGPASSWORD={PG_PASSWORD} " + dump_cmd
         print(f"{logprefix} KEY: {s3_key}")
 
         if args.dry_run:
