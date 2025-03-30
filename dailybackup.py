@@ -51,7 +51,7 @@ cursor = conn.cursor()
 cursor.execute(
     """
     SELECT datname FROM pg_database
-    WHERE datistemplate = false AND datname != 'postgres';
+    WHERE datistemplate = false AND datname != 'postgres' AND datname != 'rdsadmin';
 """
 )
 databases = [row[0] for row in cursor.fetchall()]
