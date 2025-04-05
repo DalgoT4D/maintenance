@@ -5,7 +5,7 @@ import psycopg2
 
 from dotenv import load_dotenv
 
-load_dotenv(".env.grantselectfornoorausage")
+load_dotenv("/home/ddp/maintenance/.env.grantselectfornoorausage")
 
 conn = psycopg2.connect(
     host=os.getenv("NOORA_DB_HOST"),
@@ -22,4 +22,11 @@ cursor.execute("GRANT SELECT ON noora_health.ab_user_role TO noora_usage_user")
 cursor.execute("GRANT SELECT ON noora_health.dashboard_roles TO noora_usage_user")
 cursor.execute("GRANT SELECT ON noora_health.dashboards TO noora_usage_user")
 cursor.execute("GRANT SELECT ON noora_health.slices TO noora_usage_user")
+cursor.execute("GRANT USAGE ON SCHEMA noora_health TO noora_usage_user")
+cursor.execute("GRANT SELECT ON ALL TABLES IN SCHEMA noora_health TO noora_usage_user")
+cursor.execute(
+    "ALTER DEFAULT PRIVILEGES IN SCHEMA noora_health GRANT SELECT ON TABLES TO noora_usage_user"
+)
+conn.commit()
 cursor.close()
+conn.close()
