@@ -29,7 +29,7 @@ S3_BACKUP_PATH = os.getenv("S3_BACKUP_PATH")
 RETENTION_DAYS = os.getenv("RETENTION_DAYS")
 AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")
 AWS_SECRET_KEY = os.getenv("AWS_SECRET_KEY")
-PGDUMP_BINARY = os.getenv("PGDUMP_BINARY", "/usr/lib/postgresql/15/bin/pg_dump")
+PGDUMP_BINARY = os.getenv("PGDUMP_BINARY", "/usr/bin/pg_dump")
 ROOT_CERT_LOCATION = os.getenv(
     "ROOT_CERT_LOCATION", "/home/ddp/rds-combined-ca-bundle.pem"
 )
